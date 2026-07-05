@@ -1,15 +1,15 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { type NextRequest } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
 import { SESSION_COOKIE, sessionCookieOptions, signSession } from "@/lib/session";
+import { redirect303 } from "@/lib/http";
 
 export async function POST(request: NextRequest) {
   const form = await request.formData();
   const email = String(form.get("email") ?? "").trim().toLowerCase();
   const password = String(form.get("password") ?? "");
 
-  const fail = () =>
-    NextResponse.redirect(new URL("/login?error=1", request.url), 303);
+  const fail = () => redirect303("/login?error=1");
 
   if (!email || !password) return fail();
 
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
   });
 
   const destination = user.role === "ADMIN" ? "/admin" : "/consultant";
-  const response = NextResponse.redirect(new URL(destination, request.url), 303);
+  const response = redirect303(destination);
   response.cookies.set(SESSION_COOKIE, token, sessionCookieOptions);
   return response;
 }

@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
+import { redirect303 } from "@/lib/http";
 import {
   computeApport,
   computeConsultantRevenue,
@@ -19,8 +20,7 @@ export async function POST(request: NextRequest) {
   const daysWorked = Number(form.get("daysWorked"));
   const note = String(form.get("note") ?? "").trim() || null;
 
-  const back = (error: string) =>
-    NextResponse.redirect(new URL(`/consultant?error=${error}`, request.url), 303);
+  const back = (error: string) => redirect303(`/consultant?error=${error}`);
 
   if (!isValidMonth(month)) return back("month");
   if (!isValidDaysWorked(daysWorked)) return back("days");
@@ -46,5 +46,5 @@ export async function POST(request: NextRequest) {
     },
   });
 
-  return NextResponse.redirect(new URL("/consultant?saved=1", request.url), 303);
+  return redirect303("/consultant?saved=1");
 }

@@ -1,7 +1,8 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { type NextRequest } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
 import { SESSION_COOKIE, sessionCookieOptions, signSession } from "@/lib/session";
+import { redirect303 } from "@/lib/http";
 
 export async function POST(request: NextRequest) {
   const form = await request.formData();
@@ -10,10 +11,10 @@ export async function POST(request: NextRequest) {
   const confirm = String(form.get("confirm") ?? "");
 
   const backUrl = (error: string) =>
-    NextResponse.redirect(new URL(`/activate/${token}?error=${error}`, request.url), 303);
+    redirect303(`/activate/${token}?error=${error}`);
 
   if (!token) {
-    return NextResponse.redirect(new URL("/login", request.url), 303);
+    return redirect303("/login");
   }
   if (password.length < 8) return backUrl("weak");
   if (password !== confirm) return backUrl("mismatch");
@@ -38,7 +39,7 @@ export async function POST(request: NextRequest) {
   });
 
   const destination = updated.role === "ADMIN" ? "/admin" : "/consultant";
-  const response = NextResponse.redirect(new URL(destination, request.url), 303);
+  const response = redirect303(destination);
   response.cookies.set(SESSION_COOKIE, sessionToken, sessionCookieOptions);
   return response;
 }

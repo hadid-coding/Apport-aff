@@ -1,10 +1,11 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
+import { redirect303 } from "@/lib/http";
 
 /** L'admin confirme la réception du virement de l'apport. */
 export async function POST(
-  request: NextRequest,
+  _request: Request,
   { params }: { params: { id: string } }
 ) {
   const session = await getSession();
@@ -17,7 +18,7 @@ export async function POST(
     return NextResponse.json({ error: "CRA introuvable" }, { status: 404 });
   }
   if (cra.status === "CONFIRMED") {
-    return NextResponse.redirect(new URL("/admin?error=already", request.url), 303);
+    return redirect303("/admin?error=already");
   }
 
   await prisma.cra.update({
@@ -25,5 +26,5 @@ export async function POST(
     data: { status: "CONFIRMED", transferConfirmedAt: new Date() },
   });
 
-  return NextResponse.redirect(new URL("/admin?confirmed=1", request.url), 303);
+  return redirect303("/admin?confirmed=1");
 }

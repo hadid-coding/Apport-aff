@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
+import { redirect303 } from "@/lib/http";
 
 const consultantSchema = z.object({
   name: z.string().min(1),
@@ -30,20 +31,14 @@ export async function POST(request: NextRequest) {
   });
 
   if (!parsed.success) {
-    return NextResponse.redirect(
-      new URL("/admin/consultants?error=invalid", request.url),
-      303
-    );
+    return redirect303("/admin/consultants?error=invalid");
   }
 
   const existing = await prisma.user.findUnique({
     where: { email: parsed.data.email },
   });
   if (existing) {
-    return NextResponse.redirect(
-      new URL("/admin/consultants?error=exists", request.url),
-      303
-    );
+    return redirect303("/admin/consultants?error=exists");
   }
 
   const consultant = await prisma.user.create({
@@ -64,8 +59,5 @@ export async function POST(request: NextRequest) {
     },
   });
 
-  return NextResponse.redirect(
-    new URL(`/admin/consultants?invited=${consultant.id}`, request.url),
-    303
-  );
+  return redirect303(`/admin/consultants?invited=${consultant.id}`);
 }
