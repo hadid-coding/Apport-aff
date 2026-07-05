@@ -1,0 +1,53 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// SQLite ne supporte pas les enums Prisma : role et status sont des String
+// validées applicativement ("ADMIN" | "CONSULTANT", "SUBMITTED" | "DECLARED" | "CONFIRMED").
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String
+  role         String    @default("CONSULTANT")
+  passwordHash String?
+  inviteToken  String?   @unique
+  invitedAt    DateTime?
+  activatedAt  DateTime?
+  createdAt    DateTime  @default(now())
+  mission      Mission?
+}
+
+model Mission {
+  id           String    @id @default(cuid())
+  consultantId String    @unique
+  consultant   User      @relation(fields: [consultantId], references: [id], onDelete: Cascade)
+  client       String
+  title        String
+  tjm          Float // taux journalier moyen facturé au client, en euros HT
+  apportRate   Float // apport d'affaires en euros HT par jour travaillé
+  active       Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  cras         Cra[]
+}
+
+model Cra {
+  id                  String    @id @default(cuid())
+  missionId           String
+  mission             Mission   @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  month               String // format "YYYY-MM"
+  daysWorked          Float
+  consultantRevenue   Float // daysWorked * tjm, figé à la soumission
+  apportAmount        Float // daysWorked * apportRate, figé à la soumission
+  status              String    @default("SUBMITTED") // SUBMITTED → DECLARED → CONFIRMED
+  submittedAt         DateTime  @default(now())
+  transferDeclaredAt  DateTime?
+  transferConfirmedAt DateTime?
+  note                String?
+
+  @@unique([missionId, month])
+}
