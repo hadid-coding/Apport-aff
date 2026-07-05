@@ -9,12 +9,13 @@ import {
 import { AppShell } from "@/components/AppShell";
 import { KpiTile } from "@/components/KpiTile";
 import { StatusBadge } from "@/components/StatusBadge";
+import { CraForm } from "@/components/CraForm";
 
 export const dynamic = "force-dynamic";
 
 const ERRORS: Record<string, string> = {
   month: "Mois invalide.",
-  days: "Nombre de jours invalide (entre 0,5 et 31, par demi-journée).",
+  days: "Nombre de jours invalide — sélectionnez au moins un jour.",
   duplicate: "Un CRA existe déjà pour ce mois.",
   mission: "Aucune mission active — contactez votre administrateur.",
   status: "Ce CRA n'est pas en attente de virement.",
@@ -67,12 +68,13 @@ export default async function ConsultantDashboard({
         </p>
       ) : null}
 
-      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiTile
-          label="Apport total dû"
-          value={formatEuros(summary.totalEarned)}
+          label="CA généré"
+          value={formatEuros(summary.consultantRevenue)}
           hint={`${summary.craCount} CRA soumis`}
         />
+        <KpiTile label="Apport total dû" value={formatEuros(summary.totalEarned)} />
         <KpiTile label="Déjà versé (confirmé)" value={formatEuros(summary.totalPaid)} />
         <KpiTile
           label="Reste à verser"
@@ -86,57 +88,19 @@ export default async function ConsultantDashboard({
       </div>
 
       {mission ? (
-        <section className="mt-8 grid gap-6 lg:grid-cols-[360px_1fr]">
+        <section className="mt-8 grid gap-6 lg:grid-cols-[380px_1fr]">
           <div className="h-fit rounded-lg border border-slate-200 bg-white p-4">
             <h2 className="font-semibold">Saisir mon CRA du mois</h2>
             <p className="mt-1 text-xs text-slate-500">
-              L&apos;apport dû est calculé automatiquement : jours travaillés ×{" "}
-              {formatEuros(mission.apportRate)}.
+              Les jours ouvrés sont imputés par défaut (fériés désactivés).
+              Retirez vos congés et absences, l&apos;apport est calculé
+              automatiquement.
             </p>
-            <form action="/api/cra" method="post" className="mt-4 space-y-3 text-sm">
-              <div>
-                <label htmlFor="month" className="block font-medium">
-                  Mois
-                </label>
-                <input
-                  id="month"
-                  name="month"
-                  type="month"
-                  defaultValue={currentMonth()}
-                  required
-                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
-                />
-              </div>
-              <div>
-                <label htmlFor="daysWorked" className="block font-medium">
-                  Jours travaillés
-                </label>
-                <input
-                  id="daysWorked"
-                  name="daysWorked"
-                  type="number"
-                  step="0.5"
-                  min="0.5"
-                  max="31"
-                  required
-                  placeholder="20"
-                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
-                />
-              </div>
-              <div>
-                <label htmlFor="note" className="block font-medium">
-                  Note (optionnel)
-                </label>
-                <input
-                  id="note"
-                  name="note"
-                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
-                />
-              </div>
-              <button className="w-full rounded-md bg-indigo-600 px-3 py-2 font-medium text-white hover:bg-indigo-700">
-                Soumettre le CRA
-              </button>
-            </form>
+            <CraForm
+              defaultMonth={currentMonth()}
+              tjm={mission.tjm}
+              apportRate={mission.apportRate}
+            />
           </div>
 
           <div>
@@ -147,6 +111,7 @@ export default async function ConsultantDashboard({
                   <tr>
                     <th className="px-4 py-3">Mois</th>
                     <th className="px-4 py-3 text-right">Jours</th>
+                    <th className="px-4 py-3 text-right">CA généré</th>
                     <th className="px-4 py-3 text-right">Apport dû</th>
                     <th className="px-4 py-3">Statut</th>
                     <th className="px-4 py-3" />
@@ -155,7 +120,7 @@ export default async function ConsultantDashboard({
                 <tbody>
                   {cras.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="px-4 py-6 text-center text-slate-400">
+                      <td colSpan={6} className="px-4 py-6 text-center text-slate-400">
                         Aucun CRA — saisissez votre premier mois.
                       </td>
                     </tr>
@@ -165,6 +130,9 @@ export default async function ConsultantDashboard({
                         <td className="px-4 py-3">{formatMonth(cra.month)}</td>
                         <td className="px-4 py-3 text-right tabular-nums">
                           {cra.daysWorked}
+                        </td>
+                        <td className="px-4 py-3 text-right tabular-nums text-slate-600">
+                          {formatEuros(cra.consultantRevenue)}
                         </td>
                         <td className="px-4 py-3 text-right font-medium tabular-nums">
                           {formatEuros(cra.apportAmount)}
