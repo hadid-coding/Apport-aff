@@ -4,6 +4,8 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { redirect303 } from "@/lib/http";
+import { inviteUrl } from "@/lib/invite";
+import { sendInvitationEmail } from "@/lib/mailer";
 
 const consultantSchema = z.object({
   name: z.string().min(1),
@@ -41,12 +43,13 @@ export async function POST(request: NextRequest) {
     return redirect303("/admin/consultants?error=exists");
   }
 
+  const token = crypto.randomBytes(24).toString("hex");
   const consultant = await prisma.user.create({
     data: {
       email: parsed.data.email,
       name: parsed.data.name,
       role: "CONSULTANT",
-      inviteToken: crypto.randomBytes(24).toString("hex"),
+      inviteToken: token,
       invitedAt: new Date(),
       mission: {
         create: {
@@ -59,5 +62,12 @@ export async function POST(request: NextRequest) {
     },
   });
 
-  return redirect303(`/admin/consultants?invited=${consultant.id}`);
+  const mail = await sendInvitationEmail({
+    to: consultant.email,
+    name: consultant.name,
+    activateUrl: inviteUrl(token),
+  });
+  const mailStatus = mail.sent ? "sent" : mail.skipped ? "skipped" : "failed";
+
+  return redirect303(`/admin/consultants?invited=${consultant.id}&mail=${mailStatus}`);
 }

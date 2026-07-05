@@ -89,6 +89,7 @@ serveur (voir `docker-entrypoint.sh`).
    | `ADMIN_EMAIL` | votre email admin |
    | `ADMIN_PASSWORD` | un mot de passe fort (créé au 1er démarrage) |
    | `ADMIN_NAME` | _(optionnel)_ nom affiché |
+   | `SMTP_*`, `MAIL_FROM` | _(optionnel)_ envoi des invitations — voir section SMTP |
 
    `PORT` est fourni automatiquement par Railway.
 4. **Déployer**. Au premier démarrage, l'admin est créé à partir de
@@ -111,10 +112,36 @@ docker run --rm -p 3000:3000 \
   apport-aff
 ```
 
+## Envoi des emails d'invitation (SMTP)
+
+Quand l'admin ajoute un consultant, un email d'invitation contenant le lien
+d'activation lui est envoyé automatiquement — **si le SMTP est configuré**.
+Sinon, l'app reste fonctionnelle : le lien d'activation est affiché à l'admin
+(mode manuel) et un bouton « Renvoyer l'email » est disponible.
+
+L'envoi passe par n'importe quel fournisseur SMTP via ces variables :
+
+| Variable | Exemple | Rôle |
+|---|---|---|
+| `SMTP_HOST` | `smtp.gmail.com` | serveur SMTP |
+| `SMTP_PORT` | `465` | port (465 = SSL, 587 = STARTTLS) |
+| `SMTP_SECURE` | `true` | `true` pour le port 465 |
+| `SMTP_USER` | `vous@gmail.com` | identifiant SMTP |
+| `SMTP_PASS` | `…` | mot de passe SMTP |
+| `MAIL_FROM` | `ApportAffaires <vous@gmail.com>` | expéditeur affiché |
+
+Deux options simples, sans nom de domaine :
+
+- **Gmail** : activez la validation en 2 étapes sur le compte Google, créez un
+  **mot de passe d'application** (Google → Sécurité → Mots de passe des
+  applications), et utilisez-le comme `SMTP_PASS` avec `smtp.gmail.com:465`.
+- **Brevo** (ex-Sendinblue) : créez un compte, validez votre email expéditeur,
+  et récupérez vos identifiants SMTP (`smtp-relay.brevo.com:587`). Offre
+  gratuite ~300 emails/jour.
+
+Sur Railway, ajoutez simplement ces variables au service.
+
 ## Notes
 
-- L'envoi d'email n'est pas branché : le lien d'activation est affiché à
-  l'admin, qui le transmet au consultant (WhatsApp, mail…). Un provider SMTP
-  (Resend, SES…) pourra être ajouté ensuite.
 - SQLite convient au volume actuel ; le schéma Prisma permet de migrer vers
   PostgreSQL en changeant une ligne de configuration.

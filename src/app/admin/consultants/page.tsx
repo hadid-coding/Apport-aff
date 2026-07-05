@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { formatEuros, summarizeCras } from "@/lib/calculations";
+import { inviteUrl } from "@/lib/invite";
 import { AppShell } from "@/components/AppShell";
 
 export const dynamic = "force-dynamic";
@@ -9,17 +10,13 @@ export const dynamic = "force-dynamic";
 const ERRORS: Record<string, string> = {
   invalid: "Formulaire invalide — vérifiez les champs saisis.",
   exists: "Un compte existe déjà avec cet email.",
+  activated: "Ce consultant a déjà activé son compte.",
 };
-
-function inviteUrl(token: string): string {
-  const base = process.env.APP_URL ?? "http://localhost:3000";
-  return `${base}/activate/${token}`;
-}
 
 export default async function ConsultantsPage({
   searchParams,
 }: {
-  searchParams: { invited?: string; error?: string };
+  searchParams: { invited?: string; error?: string; mail?: string };
 }) {
   const session = await requireAdmin();
 
@@ -33,6 +30,7 @@ export default async function ConsultantsPage({
     ? consultants.find((c) => c.id === searchParams.invited)
     : null;
   const error = searchParams.error ? ERRORS[searchParams.error] : null;
+  const mail = searchParams.mail; // "sent" | "skipped" | "failed"
 
   return (
     <AppShell session={session}>
@@ -46,10 +44,23 @@ export default async function ConsultantsPage({
 
       {invited?.inviteToken ? (
         <div className="mt-4 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm">
-          <p className="font-medium text-emerald-800">
-            {invited.name} a été ajouté. Envoyez-lui ce lien d&apos;activation pour
-            qu&apos;il crée son mot de passe :
-          </p>
+          {mail === "sent" ? (
+            <p className="font-medium text-emerald-800">
+              ✓ {invited.name} a été ajouté et l&apos;email d&apos;invitation a été
+              envoyé à {invited.email}.
+            </p>
+          ) : mail === "failed" ? (
+            <p className="font-medium text-amber-800">
+              {invited.name} a été ajouté, mais l&apos;envoi de l&apos;email a
+              échoué. Vérifiez la configuration SMTP, ou transmettez-lui
+              manuellement le lien ci-dessous :
+            </p>
+          ) : (
+            <p className="font-medium text-amber-800">
+              {invited.name} a été ajouté. L&apos;envoi d&apos;email n&apos;est pas
+              configuré — transmettez-lui manuellement ce lien d&apos;activation :
+            </p>
+          )}
           <code className="mt-2 block select-all break-all rounded bg-white px-2 py-1 text-xs text-slate-700">
             {inviteUrl(invited.inviteToken)}
           </code>
@@ -113,12 +124,26 @@ export default async function ConsultantsPage({
                         {c.activatedAt ? (
                           <span className="text-xs text-emerald-700">✓ Activé</span>
                         ) : c.inviteToken ? (
-                          <details className="text-xs text-amber-700">
-                            <summary className="cursor-pointer">Invitation en attente</summary>
-                            <code className="mt-1 block select-all break-all rounded bg-slate-50 px-1 py-0.5 text-[10px] text-slate-600">
-                              {inviteUrl(c.inviteToken)}
-                            </code>
-                          </details>
+                          <div className="text-xs text-amber-700">
+                            <span>Invitation en attente</span>
+                            <form
+                              action={`/api/admin/consultants/${c.id}/resend-invite`}
+                              method="post"
+                              className="mt-1"
+                            >
+                              <button className="rounded border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700 hover:bg-indigo-100">
+                                Renvoyer l&apos;email
+                              </button>
+                            </form>
+                            <details className="mt-1">
+                              <summary className="cursor-pointer text-slate-500">
+                                Lien manuel
+                              </summary>
+                              <code className="mt-1 block select-all break-all rounded bg-slate-50 px-1 py-0.5 text-[10px] text-slate-600">
+                                {inviteUrl(c.inviteToken)}
+                              </code>
+                            </details>
+                          </div>
                         ) : (
                           <span className="text-xs text-slate-400">—</span>
                         )}
