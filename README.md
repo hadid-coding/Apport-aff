@@ -61,10 +61,55 @@ Comptes créés par le seed :
 ## CI/CD
 
 Chaque push et pull request déclenche le workflow GitHub Actions
-(`.github/workflows/ci.yml`) : install, génération Prisma, lint, typecheck,
-tests puis build. Bonnes pratiques : travailler sur des branches de
-fonctionnalité, ouvrir une PR vers `main`, merger seulement quand la CI est
-verte.
+(`.github/workflows/ci.yml`) : install, génération Prisma, contrôle de
+dérive migrations ↔ schéma, lint, typecheck, tests puis build. Bonnes
+pratiques : travailler sur des branches de fonctionnalité, ouvrir une PR
+vers `main`, merger seulement quand la CI est verte.
+
+## Déploiement (Railway)
+
+L'app est conteneurisée (`Dockerfile`) et déployable sur
+[Railway](https://railway.app/) avec la base SQLite sur un volume
+persistant. Au démarrage, le conteneur applique les migrations Prisma
+(`prisma migrate deploy`), crée le compte admin si besoin, puis lance le
+serveur (voir `docker-entrypoint.sh`).
+
+1. **Créer le projet** : sur Railway, _New Project → Deploy from GitHub repo_,
+   sélectionner ce dépôt. Railway détecte le `Dockerfile` (voir `railway.json`).
+2. **Ajouter un volume persistant** : sur le service, _Volumes → New Volume_,
+   point de montage `/data`. C'est là que vivra la base SQLite (sinon elle
+   serait perdue à chaque redéploiement).
+3. **Variables d'environnement** (_Variables_) :
+
+   | Variable | Valeur |
+   |---|---|
+   | `DATABASE_URL` | `file:/data/prod.db` |
+   | `AUTH_SECRET` | un secret fort — `openssl rand -base64 32` |
+   | `APP_URL` | l'URL publique du service (`https://<app>.up.railway.app`) |
+   | `ADMIN_EMAIL` | votre email admin |
+   | `ADMIN_PASSWORD` | un mot de passe fort (créé au 1er démarrage) |
+   | `ADMIN_NAME` | _(optionnel)_ nom affiché |
+
+   `PORT` est fourni automatiquement par Railway.
+4. **Déployer**. Au premier démarrage, l'admin est créé à partir de
+   `ADMIN_EMAIL` / `ADMIN_PASSWORD`. Connectez-vous, puis ajoutez vos
+   consultants depuis l'interface. Les redéploiements sont sûrs : les
+   migrations et le bootstrap admin sont idempotents.
+
+> **Sécurité** : sans `AUTH_SECRET`, l'app refuse de démarrer en production
+> (pas de secret par défaut). Ne réutilisez jamais le secret de développement.
+
+### Build/exécution en local avec Docker
+
+```bash
+docker build -t apport-aff .
+docker run --rm -p 3000:3000 \
+  -e DATABASE_URL="file:/data/prod.db" \
+  -e AUTH_SECRET="$(openssl rand -base64 32)" \
+  -e ADMIN_EMAIL="admin@example.com" -e ADMIN_PASSWORD="motdepasse" \
+  -v apport_data:/data \
+  apport-aff
+```
 
 ## Notes
 
