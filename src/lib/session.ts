@@ -11,8 +11,18 @@ export const SESSION_COOKIE = "apport_session";
 const SESSION_DURATION_S = 60 * 60 * 24 * 7; // 7 jours
 
 function secretKey(): Uint8Array {
-  const secret = process.env.AUTH_SECRET ?? "dev-secret-change-me";
-  return new TextEncoder().encode(secret);
+  const secret = process.env.AUTH_SECRET;
+  if (secret) {
+    return new TextEncoder().encode(secret);
+  }
+  // Hors développement local, refuser de signer/vérifier avec un secret public :
+  // sinon quiconque connaît la valeur codée en dur pourrait forger un cookie admin.
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "AUTH_SECRET est requis en production. Générez-en un avec: openssl rand -base64 32"
+    );
+  }
+  return new TextEncoder().encode("dev-secret-change-me");
 }
 
 export async function signSession(payload: SessionPayload): Promise<string> {
