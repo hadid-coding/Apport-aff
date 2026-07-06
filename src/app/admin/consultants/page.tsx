@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { formatEuros, summarizeCras } from "@/lib/calculations";
 import { inviteUrl } from "@/lib/invite";
 import { AppShell } from "@/components/AppShell";
+import { DeleteConsultantButton } from "@/components/DeleteConsultantButton";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,12 @@ const ERRORS: Record<string, string> = {
 export default async function ConsultantsPage({
   searchParams,
 }: {
-  searchParams: { invited?: string; error?: string; mail?: string };
+  searchParams: {
+    invited?: string;
+    error?: string;
+    mail?: string;
+    deleted?: string;
+  };
 }) {
   const session = await requireAdmin();
 
@@ -39,6 +45,12 @@ export default async function ConsultantsPage({
       {error ? (
         <p className="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
           {error}
+        </p>
+      ) : null}
+
+      {searchParams.deleted ? (
+        <p className="mt-4 rounded-md bg-slate-100 px-3 py-2 text-sm text-slate-700">
+          Consultant supprimé.
         </p>
       ) : null}
 
@@ -78,12 +90,13 @@ export default async function ConsultantsPage({
                 <th className="px-4 py-3 text-right">Apport/j</th>
                 <th className="px-4 py-3 text-right">Non versé</th>
                 <th className="px-4 py-3">Compte</th>
+                <th className="px-4 py-3 text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
               {consultants.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-6 text-center text-slate-400">
+                  <td colSpan={7} className="px-4 py-6 text-center text-slate-400">
                     Aucun consultant pour le moment.
                   </td>
                 </tr>
@@ -147,6 +160,14 @@ export default async function ConsultantsPage({
                         ) : (
                           <span className="text-xs text-slate-400">—</span>
                         )}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex justify-end">
+                          <DeleteConsultantButton
+                            consultantId={c.id}
+                            consultantName={c.name}
+                          />
+                        </div>
                       </td>
                     </tr>
                   );
